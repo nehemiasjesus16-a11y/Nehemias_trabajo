@@ -1,0 +1,11 @@
+node_modules/
+.angular/
+dist/
+out-tsc/
+__pycache__/
+.venv/
+venv/
+.vercel/
+.env
+.env.*
+!.env.example
