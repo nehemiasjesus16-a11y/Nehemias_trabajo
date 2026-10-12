@@ -49,7 +49,7 @@ type View = 'reception' | 'staff' | 'counter' | 'clients';
       <section class="content staff" *ngIf="mode==='staff'"><div class="section-heading"><div><span class="eyebrow">PANEL DEL PERSONAL</span><h2>Control de ventanillas</h2></div><button class="quiet" (click)="setView('reception')">← Volver a recepción</button></div><div class="counter-grid"><article class="counter-card" *ngFor="let c of counters"><div class="counter-top"><span>VENTANILLA 0{{c.id}}</span><span class="status" [class.busy-status]="c.status==='busy'">● {{c.status==='busy'?'OCUPADA':'DISPONIBLE'}}</span></div><div class="counter-ticket">{{c.ticket || '— —'}}</div><div class="counter-caption">{{c.ticket?'Turno en atención':c.status==='busy'?'No disponible':'Lista para atender'}}</div><button class="primary" *ngIf="c.status==='available'" (click)="callNext(c.id)" [disabled]="!waiting.length">Llamar siguiente <span>→</span></button><button class="finish" *ngIf="c.status==='busy'" (click)="complete(c.id)">✓ &nbsp; Atención finalizada · Disponible</button></article></div></section>
 
       <section class="content display-screen counter-screen" *ngIf="mode==='counter'">
-        <div class="screen-heading"><div><span class="screen-eyebrow">PANTALLA DE ATENCIÓN</span><h1>Ventanilla 0{{selectedCounter}}</h1><p>Información en tiempo real para pacientes y personal.</p></div><span class="screen-live"><i></i> EN VIVO</span></div>
+        <div class="screen-heading"><div><span class="screen-eyebrow">PANTALLA DE ATENCIÓN</span><h1>Ventanilla 0{{selectedCounter}}</h1><p>Información en tiempo real para pacientes y personal.</p></div><div class="screen-actions"><button class="screen-sound" [class.enabled]="soundEnabled" (click)="enableSound()">{{soundEnabled?'♫ Sonido activado':'♫ Activar sonido'}}</button><span class="screen-live"><i></i> EN VIVO</span></div></div>
         <div class="counter-selector" aria-label="Elegir ventanilla"><span>VER MESA</span><button *ngFor="let c of counters" [class.selected]="selectedCounter===c.id" (click)="selectCounter(c.id)">0{{c.id}}</button></div>
         <div class="single-counter-board" [class.called]="ticketForCounter(selectedCounter)">
           <span class="board-label">{{ticketForCounter(selectedCounter) ? 'TURNO LLAMADO' : 'ESTADO DE LA VENTANILLA'}}</span>
@@ -61,7 +61,7 @@ type View = 'reception' | 'staff' | 'counter' | 'clients';
       </section>
 
       <section class="content display-screen clients-screen" *ngIf="mode==='clients'">
-        <div class="screen-heading"><div><span class="screen-eyebrow">PANTALLA DE SALA DE ESPERA</span><h1>Turnos de atención</h1><p>Atención en tiempo real · Laboratorio VidaLab</p></div><span class="screen-live"><i></i> EN VIVO</span></div>
+        <div class="screen-heading"><div><span class="screen-eyebrow">PANTALLA DE SALA DE ESPERA</span><h1>Turnos de atención</h1><p>Atención en tiempo real · Laboratorio VidaLab</p></div><div class="screen-actions"><button class="screen-sound" [class.enabled]="soundEnabled" (click)="enableSound()">{{soundEnabled?'♫ Sonido activado':'♫ Activar sonido'}}</button><span class="screen-live"><i></i> EN VIVO</span></div></div>
         <div class="clients-layout">
           <article class="next-call-panel"><span class="board-label">{{serving.length ? 'FAVOR DE PASAR' : 'PRÓXIMO TURNO'}}</span><strong>{{serving.length ? serving[serving.length-1].code : '— —'}}</strong><span>{{serving.length ? 'Ventanilla 0'+serving[serving.length-1].counter : 'En breve llamaremos tu turno'}}</span></article>
           <div class="public-counter-grid"><article class="public-counter" *ngFor="let c of counters" [class.public-busy]="c.status==='busy'"><span>VENTANILLA 0{{c.id}}</span><strong>{{ticketForCounter(c.id)?.code || '— —'}}</strong><small>{{ticketForCounter(c.id) ? 'PASE A ESTA VENTANILLA' : (c.status==='busy' ? 'OCUPADA' : 'DISPONIBLE')}}</small></article></div>
@@ -87,6 +87,7 @@ class App implements OnInit, OnDestroy {
   waiting: Ticket[] = [];
   serving: Ticket[] = [];
   counters: Counter[] = [];
+  soundEnabled = false;
   private audio?: AudioContext;
   private refreshTimer?: ReturnType<typeof setInterval>;
   private messageTimer?: ReturnType<typeof setTimeout>;
@@ -114,6 +115,7 @@ class App implements OnInit, OnDestroy {
 
   setView(view: View): void {
     this.mode = view;
+    if (this.isDisplay) this.unlockSound();
     this.syncLocation();
   }
 
@@ -220,6 +222,7 @@ class App implements OnInit, OnDestroy {
   }
 
   private enqueueAnnouncement(text: string): void {
+    if (!this.soundEnabled) return;
     this.announcementQueue.push(text);
     this.beep();
     this.speakNext();
@@ -258,6 +261,19 @@ class App implements OnInit, OnDestroy {
       gain.gain.value = 0.12;
       oscillator.start();
       oscillator.stop(this.audio.currentTime + 0.22);
+    } catch {}
+  }
+
+  enableSound(): void {
+    this.unlockSound();
+    this.beep();
+  }
+
+  private unlockSound(): void {
+    try {
+      this.audio ??= new AudioContext();
+      void this.audio.resume();
+      this.soundEnabled = true;
     } catch {}
   }
 
